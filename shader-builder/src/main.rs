@@ -2,7 +2,7 @@ use std::{env, fs};
 
 use spirv_builder::{Capability, MetadataPrintout, SpirvBuilder};
 
-const SHADERS: &[&str] = &[];
+const SHADERS: &[&str] = &["triangle"];
 
 // This file is adapted from Strolle's shader builder. 
 // See: https://github.com/yuyttenhove/strolle/tree/main/strolle-shader-builder
@@ -22,7 +22,7 @@ fn main() {
     //      alleviate on its own, using `--target-dir` - and this fixes the
     //      "artifacts getting randomly invalidated" problem.
     env::set_var("PROFILE", "release");
-    env::set_var("OUT_DIR", "../target/spirv/release/build/shader/out");
+    env::set_var("OUT_DIR", "../../target/spirv/release/build/shader/out");
 
     for shader in SHADERS {
         let compile_result = SpirvBuilder::new(
