@@ -1,0 +1,2 @@
+[alias]
+build-shaders = "run -p shader-builder --target-dir target/shader-builder --release"
