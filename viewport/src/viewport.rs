@@ -19,9 +19,9 @@ pub struct Viewport {
 
 impl Viewport {
     // Creating some of the wgpu types requires async code
-    pub async fn new(event_loop: &EventLoop<()>) -> Self {
+    pub async fn new(width: u32, height: u32, event_loop: &EventLoop<()>) -> Self {
         let window = WindowBuilder::new()
-            .with_inner_size(PhysicalSize::new(800, 800))
+            .with_inner_size(PhysicalSize::new(width, height))
             .build(event_loop)
             .unwrap();
 

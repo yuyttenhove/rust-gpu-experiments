@@ -1,0 +1,13 @@
+[package]
+name = "mandelbrot"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+viewport ={ path = "../viewport" }
+env_logger = "0.10"
+winit = "0.28"
+wgpu = "0.15"
+pollster = "0.2"

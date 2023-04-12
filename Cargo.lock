@@ -736,6 +736,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "mandelbrot"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "pollster",
+ "viewport",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
+name = "mandelbrot-shader"
+version = "0.1.0"
+dependencies = [
+ "spirv-std",
+]
+
+[[package]]
 name = "memchr"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

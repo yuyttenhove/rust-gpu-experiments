@@ -1,47 +1,19 @@
-use vertex::Vertex;
-use viewport::{run, RenderPassDresser, Viewport};
-use wgpu::util::DeviceExt;
+use viewport::{Viewport, run, RenderPassDresser};
 use winit::event_loop::EventLoop;
-mod vertex;
 
-const VERTICES: &[Vertex] = &[
-    Vertex {
-        position: [0.0, 0.36602540378, 0.0],
-        color: [0.5, 1., 0.],
-    },
-    Vertex {
-        position: [-0.5, -0.5, 0.0],
-        color: [0., 0., 1.],
-    },
-    Vertex {
-        position: [0.5, -0.5, 0.0],
-        color: [1., 0., 0.],
-    },
-];
-
-const NUM_VERTICES: u32 = VERTICES.len() as u32;
-
-struct TriangleDresser {
+struct MandelbrotDresser {
     render_pipeline: wgpu::RenderPipeline,
-    vertex_buffer: wgpu::Buffer,
 }
 
-impl TriangleDresser {
+impl MandelbrotDresser {
     fn new(viewport: &Viewport) -> Self {
         let device = viewport.device();
 
         // Load shader
         let shader = unsafe {
             device
-                .create_shader_module_spirv(&wgpu::include_spirv_raw!("../../target/triangle.spv"))
+                .create_shader_module_spirv(&wgpu::include_spirv_raw!("../../target/mandelbrot.spv"))
         };
-
-        // Create vertex buffer
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(VERTICES),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
 
         // Create pipeline
         let render_pipeline_layout =
@@ -56,7 +28,7 @@ impl TriangleDresser {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "main_vs",
-                buffers: &[Vertex::desc()],
+                buffers: &[],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
@@ -70,7 +42,7 @@ impl TriangleDresser {
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
+                front_face: wgpu::FrontFace::Cw,
                 cull_mode: Some(wgpu::Face::Back),
                 // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
                 polygon_mode: wgpu::PolygonMode::Fill,
@@ -88,21 +60,14 @@ impl TriangleDresser {
             multiview: None,
         });
 
-        Self {
-            render_pipeline,
-            vertex_buffer,
-        }
+        Self { render_pipeline }
     }
 }
 
-impl RenderPassDresser for TriangleDresser {
-    fn dress<'a, 'b>(&'a self, mut render_pass: wgpu::RenderPass<'b>)
-    where
-        'a: 'b,
-    {
+impl RenderPassDresser for MandelbrotDresser {
+    fn dress<'a, 'b>(&'a self, mut render_pass: wgpu::RenderPass<'b>) where 'a: 'b {
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.draw(0..NUM_VERTICES, 0..1);
+        render_pass.draw(0..3, 0..1);
     }
 }
 
@@ -110,8 +75,7 @@ pub fn main() {
     env_logger::init();
 
     let event_loop = EventLoop::new();
-    let viewport = pollster::block_on(Viewport::new(1000, 1000, &event_loop));
-    let dresser = TriangleDresser::new(&viewport);
-
+    let viewport = pollster::block_on(Viewport::new(800, 800, &event_loop));
+    let dresser = MandelbrotDresser::new(&viewport);
     run(event_loop, viewport, dresser);
 }
