@@ -1,82 +1,117 @@
-mod state;
-mod vertex;
-
-use state::State;
 use vertex::Vertex;
-use winit::{
-    dpi::PhysicalSize,
-    event::*,
-    event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder,
-};
+use viewport::{run, RenderPassDresser, Viewport};
+use wgpu::util::DeviceExt;
+use winit::event_loop::EventLoop;
+mod vertex;
 
 const VERTICES: &[Vertex] = &[
     Vertex {
-        position: [0.0, 0.36602540378, 0.0], color: [0., 1., 0.],
+        position: [0.0, 0.36602540378, 0.0],
+        color: [0.5, 1., 0.],
     },
     Vertex {
-        position: [-0.5, -0.5, 0.0], color: [0., 0., 1.],
+        position: [-0.5, -0.5, 0.0],
+        color: [0., 0., 1.],
     },
     Vertex {
-        position: [0.5, -0.5, 0.0], color: [1., 0., 0.],
+        position: [0.5, -0.5, 0.0],
+        color: [1., 0., 0.],
     },
 ];
 
-async fn run() {
-    env_logger::init();
-    let event_loop = EventLoop::new();
-    let window = WindowBuilder::new()
-        .with_inner_size(PhysicalSize::new(800, 800))
-        .build(&event_loop)
-        .unwrap();
+const NUM_VERTICES: u32 = VERTICES.len() as u32;
 
-    let mut state = State::new(window).await;
+struct TriangleDresser {
+    render_pipeline: wgpu::RenderPipeline,
+    vertex_buffer: wgpu::Buffer,
+}
 
-    event_loop.run(move |event, _, control_flow| match event {
-        Event::WindowEvent {
-            ref event,
-            window_id,
-        } if window_id == state.window().id() => match event {
-            WindowEvent::Resized(physical_size) => {
-                state.resize(*physical_size);
-            }
-            WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                // new_inner_size is &&mut so we have to dereference it twice
-                state.resize(**new_inner_size);
-            }
-            WindowEvent::CloseRequested
-            | WindowEvent::KeyboardInput {
-                input:
-                    KeyboardInput {
-                        state: ElementState::Pressed,
-                        virtual_keycode: Some(VirtualKeyCode::Escape),
-                        ..
-                    },
-                ..
-            } => *control_flow = ControlFlow::Exit,
-            _ => {}
-        },
-        Event::RedrawRequested(window_id) if window_id == state.window().id() => {
-            state.update();
-            match state.render() {
-                Ok(_) => {}
-                // Reconfigure the surface if lost
-                Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
-                // The system is out of memory, we should probably quit
-                Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
-                // All other errors (Outdated, Timeout) should be resolved by the next frame
-                Err(e) => eprintln!("{:?}", e),
-            }
+impl TriangleDresser {
+    fn new(viewport: &Viewport) -> Self {
+        let device = viewport.device();
+
+        // Load shader
+        let shader = unsafe {
+            device
+                .create_shader_module_spirv(&wgpu::include_spirv_raw!("../../target/triangle.spv"))
+        };
+
+        // Create vertex buffer
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Vertex Buffer"),
+            contents: bytemuck::cast_slice(VERTICES),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
+        // Create pipeline
+        let render_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Render Pipeline Layout"),
+                bind_group_layouts: &[],
+                push_constant_ranges: &[],
+            });
+        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Render Pipeline"),
+            layout: Some(&render_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: "main_vs",
+                buffers: &[Vertex::desc()],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: "main_fs",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: viewport.surface_format(),
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
+                polygon_mode: wgpu::PolygonMode::Fill,
+                // Requires Features::DEPTH_CLIP_CONTROL
+                unclipped_depth: false,
+                // Requires Features::CONSERVATIVE_RASTERIZATION
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+        });
+
+        Self {
+            render_pipeline,
+            vertex_buffer,
         }
-        Event::MainEventsCleared => {
-            // RedrawRequested will only trigger once, unless we manually
-            // request it.
-            state.window().request_redraw();
-        }
-        _ => {}
-    });
+    }
+}
+
+impl RenderPassDresser for TriangleDresser {
+    fn dress<'a, 'b>(&'a self, mut render_pass: wgpu::RenderPass<'b>)
+    where
+        'a: 'b,
+    {
+        render_pass.set_pipeline(&self.render_pipeline);
+        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        render_pass.draw(0..NUM_VERTICES, 0..1);
+    }
 }
 
 pub fn main() {
-    pollster::block_on(run());
+    env_logger::init();
+
+    let event_loop = EventLoop::new();
+    let viewport = pollster::block_on(Viewport::new(&event_loop));
+    let dresser = TriangleDresser::new(&viewport);
+
+    run(event_loop, viewport, dresser);
 }

@@ -5,4 +5,5 @@ members = [
     "shader-builder",
     "triangle",
     "shaders/triangle",
+    "viewport",
 ]
