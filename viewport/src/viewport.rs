@@ -1,7 +1,7 @@
 use winit::{
     dpi::PhysicalSize,
     event::*,
-    event_loop::EventLoop,
+    event_loop::{EventLoop, ControlFlow},
     window::{Window, WindowBuilder},
 };
 
@@ -94,6 +94,55 @@ impl Viewport {
         }
     }
 
+    pub fn run<Dresser>(mut viewport: Self, event_loop: EventLoop<()>, render_pass_dresser: Dresser)
+    where
+        Dresser: RenderPassDresser + 'static,
+    {
+        event_loop.run(move |event, _, control_flow| match event {
+            Event::WindowEvent {
+                ref event,
+                window_id,
+            } if window_id == viewport.window().id() => match event {
+                WindowEvent::Resized(physical_size) => {
+                    viewport.resize(*physical_size);
+                }
+                WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                    // new_inner_size is &&mut so we have to dereference it twice
+                    viewport.resize(**new_inner_size);
+                }
+                WindowEvent::CloseRequested
+                | WindowEvent::KeyboardInput {
+                    input:
+                        KeyboardInput {
+                            state: ElementState::Pressed,
+                            virtual_keycode: Some(VirtualKeyCode::Escape),
+                            ..
+                        },
+                    ..
+                } => *control_flow = ControlFlow::Exit,
+                _ => {}
+            },
+            Event::RedrawRequested(window_id) if window_id == viewport.window().id() => {
+                viewport.update();
+                match viewport.render(&render_pass_dresser) {
+                    Ok(_) => {}
+                    // Reconfigure the surface if lost
+                    Err(wgpu::SurfaceError::Lost) => viewport.resize(viewport.size()),
+                    // The system is out of memory, we should probably quit
+                    Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
+                    // All other errors (Outdated, Timeout) should be resolved by the next frame
+                    Err(e) => eprintln!("{:?}", e),
+                }
+            }
+            Event::MainEventsCleared => {
+                // RedrawRequested will only trigger once, unless we manually
+                // request it.
+                viewport.window().request_redraw();
+            }
+            _ => {}
+        });
+    }
+
     pub fn window(&self) -> &Window {
         &self.window
     }
@@ -115,7 +164,10 @@ impl Viewport {
         // TODO
     }
 
-    pub fn render<Dresser: RenderPassDresser>(&self, render_pass_dresser: &Dresser) -> Result<(), wgpu::SurfaceError> {
+    pub fn render<Dresser: RenderPassDresser>(
+        &self,
+        render_pass_dresser: &Dresser,
+    ) -> Result<(), wgpu::SurfaceError> {
         let mut renderer = Renderer::new(self)?;
         render_pass_dresser.dress(renderer.render_pass());
         renderer.render();
@@ -133,6 +185,10 @@ impl Viewport {
 
     pub fn surface_format(&self) -> wgpu::TextureFormat {
         self.surface_format
+    }
+
+    pub fn queue(&self) -> &wgpu::Queue {
+        &self.queue
     }
 }
 

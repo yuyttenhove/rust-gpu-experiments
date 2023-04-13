@@ -1,5 +1,5 @@
 [package]
-name = "triangle"
+name = "textures"
 version = "0.1.0"
 edition = "2021"
 
@@ -11,5 +11,5 @@ winit = "0.28"
 wgpu = "0.15"
 pollster = "0.2"
 bytemuck = "1.12"
-viewport = { path = "../viewport" }
 models = { path = "../models" }
+viewport = { path = "../viewport" }

@@ -2,7 +2,7 @@ use std::{env, fs};
 
 use spirv_builder::{Capability, MetadataPrintout, SpirvBuilder};
 
-const SHADERS: &[&str] = &["triangle", "mandelbrot"];
+const SHADERS: &[&str] = &["triangle", "mandelbrot", "textures"];
 
 // This file is adapted from Strolle's shader builder. 
 // See: https://github.com/yuyttenhove/strolle/tree/main/strolle-shader-builder

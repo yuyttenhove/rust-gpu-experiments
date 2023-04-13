@@ -1,19 +1,18 @@
-use vertex::Vertex;
-use viewport::{run, RenderPassDresser, Viewport};
+use models::ColoredVertex;
+use viewport::{RenderPassDresser, Viewport};
 use wgpu::util::DeviceExt;
 use winit::event_loop::EventLoop;
-mod vertex;
 
-const VERTICES: &[Vertex] = &[
-    Vertex {
+const VERTICES: &[ColoredVertex] = &[
+    ColoredVertex {
         position: [0.0, 0.36602540378, 0.0],
         color: [0.5, 1., 0.],
     },
-    Vertex {
+    ColoredVertex {
         position: [-0.5, -0.5, 0.0],
         color: [0., 0., 1.],
     },
-    Vertex {
+    ColoredVertex {
         position: [0.5, -0.5, 0.0],
         color: [1., 0., 0.],
     },
@@ -56,7 +55,7 @@ impl TriangleDresser {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "main_vs",
-                buffers: &[Vertex::desc()],
+                buffers: &[ColoredVertex::desc()],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
@@ -113,5 +112,5 @@ pub fn main() {
     let viewport = pollster::block_on(Viewport::new(1000, 1000, &event_loop));
     let dresser = TriangleDresser::new(&viewport);
 
-    run(event_loop, viewport, dresser);
+    Viewport::run(viewport, event_loop, dresser);
 }

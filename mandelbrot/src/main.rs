@@ -1,4 +1,4 @@
-use viewport::{Viewport, run, RenderPassDresser};
+use viewport::{Viewport, RenderPassDresser};
 use winit::event_loop::EventLoop;
 
 struct MandelbrotDresser {
@@ -77,5 +77,5 @@ pub fn main() {
     let event_loop = EventLoop::new();
     let viewport = pollster::block_on(Viewport::new(800, 800, &event_loop));
     let dresser = MandelbrotDresser::new(&viewport);
-    run(event_loop, viewport, dresser);
+    Viewport::run(viewport, event_loop, dresser);
 }

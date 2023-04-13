@@ -4,8 +4,10 @@ resolver = "2"
 members = [
     "mandelbrot",
     "shader-builder",
-    "triangle",
     "shaders/mandelbrot",
+    "shaders/textures",
     "shaders/triangle",
+    "textures",
+    "triangle",
     "viewport",
 ]
